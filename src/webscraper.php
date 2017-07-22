@@ -100,6 +100,12 @@ class GRBJScraper
         return array_unique(array_merge($trending_links, $article_links, $menu_links));
     }
 
+    /**
+     * Used instead of get_article_links to avoid recurssion.
+     *
+     * @param $content
+     * @return array
+     */
     protected function non_recursive_article_links($content)
     {
         $crawler = new Crawler($content);
@@ -112,6 +118,12 @@ class GRBJScraper
         return array_unique(array_merge($trending_links, $article_links));
     }
 
+    /**
+     * When deep-searching, goes over every menu link.
+     *
+     * @param $content
+     * @return array
+     */
     protected function get_menu_links($content)
     {
         $crawler = new Crawler($content);
@@ -268,6 +280,7 @@ class GRBJScraper
     /**
      * Gets all the articles data.
      *
+     * @param $deep_search if true, will perfrom a deep search on all menu links.
      * @return array
      */
     function get_data($deep_search = false)
