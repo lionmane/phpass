@@ -4,6 +4,7 @@ namespace MarioWunderlich;
 require 'vendor/autoload.php';
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Symfony\Component\DomCrawler\Crawler;
 
 class GRBJScraper
@@ -89,7 +90,39 @@ class GRBJScraper
         $article_links_filter = $crawler->filter('.record h2.headline');
         $article_links = $this->get_links_from_filter($article_links_filter);
 
-        return array_unique(array_merge($trending_links, $article_links));
+        // Get links to other pages with articles
+        $menu_links = $this->recursively_get_article_links($content);
+
+        return array_unique(array_merge($trending_links, $article_links, $menu_links));
+    }
+
+    protected function get_menu_links($content)
+    {
+        $crawler = new Crawler($content);
+
+        $menu_links_filter = $crawler->filter('li.level2-li');
+        $menu_links = $this->get_links_from_filter($menu_links_filter);
+
+        return $menu_links;
+    }
+
+    protected function recursively_get_article_links($content)
+    {
+        $result = [];
+        $menu_links = $this->get_menu_links($content);
+        foreach ($menu_links as $link) {
+            try {
+                echo "Getting link: $link\n";
+                $menu_page = $this->get_content("/$link");
+                $article_links = $this->get_article_links($menu_page);
+                $result = array_merge($result, $article_links);
+            }
+            catch (ClientException $error) {
+                echo "Could not get page: $link: " . $error->getMessage() . "\n";
+            }
+        }
+
+        return $result;
     }
 
     /**
