@@ -12,22 +12,4 @@ include_once "src/webscraper.php";
 use MarioWunderlich\GRBJScraper;
 
 $test = new GRBJScraper("http://archive-grbj-2.s3-website-us-west-1.amazonaws.com/");
-$content = $test->get_content();
-$results = $test->get_article_links($content);
-//foreach ($results as $link) {
-//    $article = $test->scrape_article($results[0]);
-//    print_r($article);
-//}
-
-foreach ($results as $link) {
-    if (preg_match('/.*blog.*/', $link)) {
-        echo "Skipping blog entry: $link\n";
-        continue;
-    }
-
-    echo "Loading article entry: $link\n";
-    $article = $test->scrape_article($link);
-    print_r($article);
-
-    echo "\n\n";
-}
+print_r($test->get_data());
