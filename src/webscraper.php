@@ -1,7 +1,7 @@
 <?php
 namespace MarioWunderlich;
 
-require 'vendor/autoload.php';
+require_once 'vendor/autoload.php';
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
@@ -80,7 +80,7 @@ class GRBJScraper
      * @param $content
      * @return array
      */
-    public function get_article_links($content)
+    public function get_article_links($content, $deep_search = false)
     {
         $crawler = new Crawler($content);
 
@@ -90,10 +90,26 @@ class GRBJScraper
         $article_links_filter = $crawler->filter('.record h2.headline');
         $article_links = $this->get_links_from_filter($article_links_filter);
 
-        // Get links to other pages with articles
-        $menu_links = $this->recursively_get_article_links($content);
+        $menu_links = [];
+
+        // If deep search is enabled, then get article links for every other page on the site
+        // That's accessible from the navigation menu
+        if ($deep_search)
+            $menu_links = $this->recursively_get_article_links($content);
 
         return array_unique(array_merge($trending_links, $article_links, $menu_links));
+    }
+
+    protected function non_recursive_article_links($content)
+    {
+        $crawler = new Crawler($content);
+
+        $trending_links_filter = $crawler->filter('#section-3 .records li');
+        $trending_links = $this->get_links_from_filter($trending_links_filter);
+
+        $article_links_filter = $crawler->filter('.record h2.headline');
+        $article_links = $this->get_links_from_filter($article_links_filter);
+        return array_unique(array_merge($trending_links, $article_links));
     }
 
     protected function get_menu_links($content)
@@ -110,15 +126,17 @@ class GRBJScraper
     {
         $result = [];
         $menu_links = $this->get_menu_links($content);
+
         foreach ($menu_links as $link) {
+
             try {
                 echo "Getting link: $link\n";
-                $menu_page = $this->get_content("/$link");
-                $article_links = $this->get_article_links($menu_page);
+                $menu_page = $this->get_content($link);
+                $article_links = $this->non_recursive_article_links($menu_page);
                 $result = array_merge($result, $article_links);
             }
             catch (ClientException $error) {
-                echo "Could not get page: $link: " . $error->getMessage() . "\n";
+                echo "Could not get page: $link\n";
             }
         }
 
@@ -252,12 +270,12 @@ class GRBJScraper
      *
      * @return array
      */
-    function get_data()
+    function get_data($deep_search = false)
     {
         $content = $this->get_content();
 
         // Get article links form the main website
-        $links = $this->get_article_links($content);
+        $links = $this->get_article_links($content, $deep_search);
         $articles_by_author = [];
         $ignore_list = ['directories'];
 
