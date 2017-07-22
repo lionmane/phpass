@@ -135,6 +135,33 @@ class GRBJScraper
     }
 
     /**
+     * @param $link
+     * @return array
+     */
+    public function scrape_blog($link)
+    {
+        $content = $this->get_content($link);
+
+        $crawler = new Crawler($content);
+        $main_selector = ".box1.blog-post .records .record ";
+        $section_two = '.box1.blog-post .records .record .article-author-bio .records .record .author-info .author_bio ';
+
+        $selectors = [
+            'article.title' => $main_selector . "h1.headline",
+            'article.date' => '.meta div.date',
+
+            'author.name' => $main_selector . "div.author a",
+            'author.twitter' => [$section_two . "a", 'href', '/.*twitter.*/'],
+            'author.bio' => $section_two ,
+            'author.url' => [ $main_selector . "div.author a", 'href']
+        ];
+
+        $article = $this->parse_selectors($crawler, $selectors);
+        $article['article']['url'] = $this->target_url . '/' . $link;
+        return $article;
+    }
+
+    /**
      * Given an associative array of buckets.keys => CSS selectors, parses them and fetches the
      * correspondig information for each selector, storing it within the specified bucket[key].
      *
@@ -199,7 +226,7 @@ class GRBJScraper
         // Get article links form the main website
         $links = $this->get_article_links($content);
         $articles_by_author = [];
-        $ignore_list = ['blog', 'directories'];
+        $ignore_list = ['directories'];
 
         foreach ($links as $link) {
             // Skip blog entries for now
@@ -207,7 +234,13 @@ class GRBJScraper
                 continue;
             }
 
-            $article = $this->scrape_article($link);
+            if (preg_match('/.*article.*/', $link)) {
+                $article = $this->scrape_article($link);
+            }
+            if (preg_match('/.*blog.*/', $link)) {
+                $article = $this->scrape_blog($link);
+            }
+
             $author = $article['author']['name'];
             if (empty($author))
                 continue;
